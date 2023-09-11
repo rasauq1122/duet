@@ -9,14 +9,17 @@ type node =
 ;;
 
 let nidx = ref 0;;
-let idx2node = ref BatMap.empty;; (* (int, node) BatMap.t  *)
+(* let idx2node = ref BatMap.empty;; (* (int, node) BatMap.t  *) *)
+let idx2node = ref [];; (* node list *)
 
 let fidx = ref 0;;
-let idx2func = ref BatMap.empty;; (* (int, (FuncRewrite, exprtype)) BatMap.t *)
+(* let idx2func = ref BatMap.empty;; (* (int, (FuncRewrite, exprtype)) BatMap.t *) *)
+let idx2func = ref [];; (* (FuncRewrite, exprtype) list *)
 let func2idx = ref BatMap.empty;; (* (FuncRewrite, int) BatMap.t *)
 
 let nt2out = ref BatMap.empty;; (* (NTRewrite, const list) BatMap.t *)
-let idx2out = ref BatMap.empty;; (* (int, const list) BatMap.t *)
+(* let idx2out = ref BatMap.empty;; (* (int, const list) BatMap.t *) *)
+let idx2out = ref [];; (* const list list *) 
 
 let nt_order = ref [];; (* NTRewrite list *)
 let nt_edge = ref BatMap.empty;; (* (NTRewrite, NTRewrite BatSet.t) BatMap.t *)
@@ -30,18 +33,18 @@ let rec expr_of_node x =
   match x with
   | Leaf expr -> expr
   | NonLeaf (idx, children) -> (
-    let func, ty = BatMap.find idx !idx2func in
+    let func, ty = List.nth !idx2func idx in
     match func with
     | FuncRewrite (op, _) -> Function (op, BatList.map expr_of_idx children, ty)
     | _ -> failwith "node2expr : not FuncRewrite"
   )
-and expr_of_idx i = expr_of_node (BatMap.find i !idx2node);;
+and expr_of_idx i = expr_of_node (List.nth !idx2node i);;
 
 let rec count_exprs node = 
   match node with
   | Leaf expr -> 1
   | NonLeaf (_, children) -> 
-    BatList.fold_right (fun child cnt -> cnt + count_exprs (BatMap.find child !idx2node)) children 1
+    BatList.fold_right (fun child cnt -> cnt + count_exprs (List.nth !idx2node child)) children 1
 ;;
 
 (* partition *)
@@ -62,12 +65,12 @@ let idxes_of_size sz grammar nts sz2idxes spec =
   (* print_endline (string_of_int sz); *)
   if sz = 1 then
     let _ = nidx := 0 in
-    let _ = idx2node := BatMap.empty in
+    let _ = idx2node := [] in
     let _ = fidx := 0 in 
-    let _ = idx2func := BatMap.empty in 
+    let _ = idx2func := [] in 
     let _ = func2idx := BatMap.empty in
     let _ = nt2out := BatMap.empty in
-    let _ = idx2out := BatMap.empty in
+    let _ = idx2out := [] in
     let _ = spec_out := BatList.map (fun (_, y) -> y) spec in
     let nt2idxes = BatSet.fold (fun nt nt2idxes ->
       nt2out := BatMap.add nt BatSet.empty !nt2out;
@@ -77,16 +80,17 @@ let idxes_of_size sz grammar nts sz2idxes spec =
         match rule with
         | ExprRewrite expr -> (
           let idx = !nidx in
+          let now_out = compute_signature spec expr in
           nidx := !nidx + 1;
-          idx2node := BatMap.add idx (Leaf expr) !idx2node;
-          idx2out := BatMap.add idx (compute_signature spec expr) !idx2out;
-          nt2out := BatMap.add nt (BatSet.add (compute_signature spec (expr_of_idx idx)) (BatMap.find nt !nt2out)) !nt2out;
+          idx2node := !idx2node @ [Leaf expr];
+          idx2out := !idx2out @ [now_out];
+          nt2out := BatMap.add nt (BatSet.add (now_out) (BatMap.find nt !nt2out)) !nt2out;
           BatSet.add idx idxes
         )
         | FuncRewrite _ -> (
           let idx = !fidx in
           fidx := !fidx + 1;
-          idx2func := BatMap.add idx (rule, BatMap.find nt !Grammar.nt_type_map) !idx2func;
+          idx2func := !idx2func @ [(rule, BatMap.find nt !Grammar.nt_type_map)];
           func2idx := BatMap.add rule idx !func2idx;
           idxes
         )
@@ -140,7 +144,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                     (* print_endline((string_of_bool use_new_spec) ^ " -> " ^ (string_of_int (sz-1)) ^ " " ^ (string_of_int (BatList.length children))); *)
                     let new_spec = 
                       if use_new_spec then
-                        BatList.map (fun x -> BatMap.find x !idx2out) acc
+                        BatList.map (fun x -> List.nth !idx2out x) acc
                       else
                         []
                     in
@@ -160,9 +164,9 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                         ()
                       else
                         let _ = nt2out := BatMap.add nt (BatSet.add out (BatMap.find nt !nt2out)) !nt2out in
-                        let _ = idx2out := BatMap.add idx out !idx2out in
+                        let _ = idx2out := !idx2out @ [out] in
                         let _ = nidx := !nidx + 1 in
-                        let _ = idx2node := BatMap.add idx node !idx2node in
+                        let _ = idx2node := !idx2node @ [node] in
                         let _ = now := BatSet.add idx !now in
                         let _ = if use_new_spec then alt_comp := !alt_comp + 1 else () in
                         ()
@@ -204,7 +208,7 @@ let rec search sz nt is_start_nt grammar nts spec sz2idxes =
   let (success, func) = BatSet.fold (fun idx (success, func) ->
     if success then (success, func)
     else
-      let out = BatMap.find idx !idx2out in
+      let out = List.nth !idx2out idx in
       if BatList.for_all (fun (x, y) -> x=y) (BatList.combine tg_out out) then
         (true, expr_of_idx idx)
       else (success, func)
@@ -301,7 +305,7 @@ let expand nts grammar nt2idxes =
       let nxt = BatMap.find nt !nt_edge in
       let now_idxes = BatMap.find nt expanded in
       let now_sig = BatSet.map (fun idx ->
-        BatMap.find idx !idx2out
+        List.nth !idx2out idx 
       ) now_idxes in
       BatSet.fold (fun nt' expanded ->
         nt2out := BatMap.add nt' (BatSet.union now_sig (BatMap.find nt' !nt2out)) !nt2out;

@@ -665,7 +665,7 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
 			BatMap.mapi (fun nt idxes -> 
 				let exprs = BatSet.map (fun idx ->
 					let expr = Bottomup.expr_of_idx idx in
-					let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
+					let expr_sig = try List.nth idx_to_sig idx with _ -> assert false in
 					nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
 					(* nt_to_sigs_ref := BatMap.add nt (BatSet.add expr_sig (BatMap.find nt !nt_to_sigs_ref)) !nt_to_sigs_ref; *)
 					(expr, max_component_size) 
