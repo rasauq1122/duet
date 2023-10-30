@@ -618,7 +618,7 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
 		BatSet.fold (fun nt m -> BatMap.add nt BatSet.empty m) nts BatMap.empty 
 	in
 	(* size_to_nt_to_idxes: index of AST nodes whose size of expression is S from each nonterminal *)
-	let size_to_nt_to_idxes : (int, (rewrite, int BatSet.t) BatMap.t) BatMap.t = BatMap.empty in
+	let size_to_nt_to_idxes : (int, (rewrite, Bottomup.IndexSet.t) BatMap.t) BatMap.t = BatMap.empty in
 	(* nt_sig_to_expr: "(N, sig) -> expr" means expr is derivable from N and its output is sig *)
 	let nt_sig_to_expr : (rewrite * signature, expr) BatMap.t = BatMap.empty in
 	let desired_sig = List.map (fun (inputs, output) -> output) spec in
@@ -650,7 +650,7 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
   	let prev_size_nt_sig_to_expr = BatMap.cardinal nt_sig_to_expr in
 		(** Component generation via Bottom-up enumeration *)
 		let start = Sys.time () in 
-		let (nt_to_sigs, size_to_nt_to_idxes, idx_to_sig) =
+		let (size_to_nt_to_idxes, idx_to_sig) =
 			(* exclude ite's *)
 			(* when we add components, we don't have to add ite expressions as components; *)
 			(* ite expressions will be explored by a specialized mechanism (decision tree learning) *)
@@ -659,21 +659,23 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
 				nt_rule_list grammar (max_component_size, max_component_size + 1) 
   	in 
 		let nt_sig_to_expr_ref = ref nt_sig_to_expr in
-		(* let nt_to_sigs_ref = ref nt_to_sigs in  *)
-		let adapt_start = Sys.time () in 
-		let nt_to_exprs = 
-			BatMap.mapi (fun nt idxes -> 
-				let exprs = BatSet.map (fun idx ->
+		let nt_to_sigs_ref = ref nt_to_sigs in 
+		let nt_to_exprs_ref = ref nt_to_exprs in
+		let adapt_start = Sys.time () in  
+		let _ =	
+			BatMap.iter (fun nt idxes -> 
+				Bottomup.IndexSet.iter (fun idx ->
 					let expr = Bottomup.expr_of_idx idx in
 					let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
 					nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
-					(* nt_to_sigs_ref := BatMap.add nt (BatSet.add expr_sig (BatMap.find nt !nt_to_sigs_ref)) !nt_to_sigs_ref; *)
-					(expr, max_component_size) 
-				) idxes in
-				BatSet.union exprs (try BatMap.find nt nt_to_exprs with _ -> assert false)
-			) (BatMap.find max_component_size size_to_nt_to_idxes)
-		in
+					nt_to_sigs_ref := BatMap.add nt (BatSet.add expr_sig (BatMap.find nt !nt_to_sigs_ref)) !nt_to_sigs_ref;
+					nt_to_exprs_ref := BatMap.add nt (BatSet.add (expr, max_component_size) (BatMap.find nt !nt_to_exprs_ref)) !nt_to_exprs_ref;
+				) idxes;
+			) (BatMap.find max_component_size size_to_nt_to_idxes);
+		in 
 		let nt_sig_to_expr = !nt_sig_to_expr_ref in
+		let nt_to_sigs = !nt_to_sigs_ref in
+		let nt_to_exprs = !nt_to_exprs_ref in
 		let _ = adapt_time := !adapt_time +. (Sys.time() -. adapt_start) in
 		(* let nt_to_sigs = !nt_to_sigs_ref in *)
 		let _ = bu_time := !bu_time +. (Sys.time() -. start) in

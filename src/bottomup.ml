@@ -79,7 +79,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
     (* mapping (NT, indexes of node that can generate from nt)  *)
     let nt2idxes = BatSet.fold (fun nt nt2idxes ->
       let rules = BatMap.find nt grammar in
-      let idxes : IndexSet =
+      let idxes =
         BatSet.fold (fun rule idxes ->
           match rule with
           | ExprRewrite expr -> (
@@ -104,7 +104,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
   else (* sz > 1 *)
     let nt2idxes = BatSet.fold (fun nt nt2idxes -> 
       let rules = BatMap.find nt grammar in
-      let idxes : IndexSet = 
+      let idxes = 
         BatSet.fold (fun rule idxes ->
           match rule with
           | FuncRewrite (op, children) -> (
@@ -131,7 +131,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                 (* check if all (size, NT) has non-empty set *)
                 let is_all_not_empty x =
                   BatList.for_all (fun (sz, nt) -> 
-                    not (BatSet.is_empty (BatMap.find nt (BatMap.find sz sz2idxes)))
+                    not (IndexSet.is_empty (BatMap.find nt (BatMap.find sz sz2idxes)))
                   ) x in            
                 
                 if is_all_not_empty sz_x_nt then
@@ -146,18 +146,11 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                       let idx = !nidx in 
                       let node = NonLeaf (BatMap.find rule !func2idx, acc) in
                       
-                      let start_alt = Sys.time () in
-                      
                       (* for equivalence param valuation *)
                       let new_spec = BatList.map (fun x -> BatMap.find x !idx2out) acc in
                       
-                      let _ = alt_time := !alt_time +. (Sys.time () -. start_alt) in
-                      let start_cpt = Sys.time () in
-                      
                       try (
                         let out = evaluate_expr_faster new_spec expr_for_now in 
-                        
-                        let _ = compute_time := !compute_time +. (Sys.time () -. start_cpt) in
                         
                         (* use temporary index to compare outputs *)
                         let _ = idx2out := BatMap.add 0 out !idx2out in 
@@ -181,10 +174,9 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                           let _ = idx2out := BatMap.add idx out !idx2out in
                           let _ = nidx := !nidx + 1 in
                           let _ = idx2node := BatMap.add idx node !idx2node in
-                          let _ = now_idxes := BatSet.add idx !now_idxes in
+                          let _ = now_idxes := IndexSet.add idx !now_idxes in
                           ()
                       ) with _ -> (
-                        let _ = compute_time := !compute_time +. (Sys.time () -. start_cpt) in
                         ();
                       )
                     )
@@ -193,14 +185,14 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                       let idxes' = BatMap.find nt (BatMap.find sz sz2idxes) in
 
                       (* iterate for all index from 'indexes' *)
-                      BatSet.iter (fun idx -> 
+                      IndexSet.iter (fun idx -> 
                         get_idxes tl (acc @ [idx]) ()
                       ) idxes'
-                    ) in 
-
+                    ) 
+                  in 
                   (* fill mutable variable 'now_idxes' *)
                   let _ = get_idxes sz_x_nt [] () in
-                  BatSet.union !now idxes
+                  IndexSet.union !now_idxes idxes
                 else idxes
               ) partitions idxes in
               idxes
@@ -218,7 +210,7 @@ let rec search sz nt is_start_nt grammar nts spec sz2idxes =
   let trivial = Const (get_trivial_value (BatMap.find nt !Grammar.nt_type_map)) in
   let sz2idxes = if is_start_nt then idxes_of_size sz grammar nts sz2idxes spec else sz2idxes in
   let idxes = BatMap.find nt (BatMap.find sz sz2idxes) in
-  let (success, func) = BatSet.fold (fun idx (success, func) ->
+  let (success, func) = IndexSet.fold (fun idx (success, func) ->
     if success then (success, func)
     else
       let out = BatMap.find idx !idx2out in
