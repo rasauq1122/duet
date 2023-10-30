@@ -26,11 +26,6 @@ let nt_edge = ref BatMap.empty;; (* (NTRewrite, NTRewrite BatSet.t) BatMap.t *)
 
 (* let spec_out = ref [];; *)
 
-(* statistics *)
-let alt_time = ref 0.0;;
-let alt_comp = ref 0;;
-let compute_time = ref 0.0;;
-
 (* for memory optimzing : can replace nt_to_sig *)
 module IndexSet = BatSet.Make(
   struct
@@ -216,7 +211,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
     ) nts BatMap.empty in
     BatMap.add sz nt2idxes sz2idxes
 ;;
-(* TODO : expand + immigration *)
+(* TODO : immigration *)
 
 let rec search sz nt is_start_nt grammar nts spec sz2idxes = 
   let tg_out = BatList.map (fun (_, y) -> y) spec in
@@ -347,5 +342,5 @@ let get_sigs_of_size _ (* desired_sig *) spec nts size_to_nt_to_idxes
   print_endline (string_of_int curr_size);
   print_endline (string_of_map string_of_rewrite (string_of_set string_of_expr) nt_to_exprs); *)
   (* print_endline (string_of_map string_of_rewrite (string_of_set (string_of_list string_of_const)) !nt2out); *)
-  (!nt2out, size_to_nt_to_idxes, !idx2out)
+  (size_to_nt_to_idxes, !idx2out)
 ;;
