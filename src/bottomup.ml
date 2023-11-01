@@ -18,7 +18,8 @@ let idx2func = ref BatMap.empty;; (* (int, (FuncRewrite, exprtype)) BatMap.t *)
 let func2idx = ref BatMap.empty;; (* (FuncRewrite, int) BatMap.t *)
 
 (* mapping (index of node, output of node) for all valid node *)
-let idx2out = ref BatMap.empty;; (* (int, const list) BatMap.t *)
+let idx2out : Exprs.const list list ref = ref [];; (* (const list) list *)
+let tmpout : Exprs.const list ref = ref [];; (* const list *)
 
 (* topological sorting *)
 let nt_order = ref [];; (* NTRewrite list *)
@@ -31,7 +32,11 @@ module IndexSet = BatSet.Make(
   struct
     type t = int
     let compare = fun x y -> (
-      compare (BatMap.find x !idx2out) (BatMap.find y !idx2out)
+      let get i : const list = 
+        if i = 0 then !tmpout
+        else BatList.at !idx2out (i-1)
+      in 
+      compare (get x) (get y)
     )
   end
 );;
@@ -74,7 +79,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
     let _ = fidx := 0 in 
     let _ = idx2func := BatMap.empty in 
     let _ = func2idx := BatMap.empty in
-    let _ = idx2out := BatMap.empty in
+    let _ = idx2out := [] in
 
     (* mapping (NT, indexes of node that can generate from nt)  *)
     let nt2idxes = BatSet.fold (fun nt nt2idxes ->
@@ -84,9 +89,10 @@ let idxes_of_size sz grammar nts sz2idxes spec =
           match rule with
           | ExprRewrite expr -> (
             let idx = !nidx in
+            let now_out = compute_signature spec expr in
             nidx := !nidx + 1;
             idx2node := BatMap.add idx (Leaf expr) !idx2node;
-            idx2out := BatMap.add idx (compute_signature spec expr) !idx2out;
+            idx2out := !idx2out @ [now_out];
             IndexSet.add idx idxes
           )
           | FuncRewrite _ -> (
@@ -147,13 +153,13 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                       let node = NonLeaf (BatMap.find rule !func2idx, acc) in
                       
                       (* for equivalence param valuation *)
-                      let new_spec = BatList.map (fun x -> BatMap.find x !idx2out) acc in
+                      let new_spec = BatList.map (fun x -> BatList.at !idx2out (x-1)) acc in
                       
                       try (
                         let out = evaluate_expr_faster new_spec expr_for_now in 
                         
                         (* use temporary index to compare outputs *)
-                        let _ = idx2out := BatMap.add 0 out !idx2out in 
+                        let _ = tmpout := out in 
                         let duplicate = 
                           if IndexSet.mem 0 !now_idxes then
                             true
@@ -171,7 +177,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                         if duplicate then
                           ()
                         else
-                          let _ = idx2out := BatMap.add idx out !idx2out in
+                          let _ = idx2out := !idx2out @ [out] in
                           let _ = nidx := !nidx + 1 in
                           let _ = idx2node := BatMap.add idx node !idx2node in
                           let _ = now_idxes := IndexSet.add idx !now_idxes in
@@ -213,7 +219,7 @@ let rec search sz nt is_start_nt grammar nts spec sz2idxes =
   let (success, func) = IndexSet.fold (fun idx (success, func) ->
     if success then (success, func)
     else
-      let out = BatMap.find idx !idx2out in
+      let out = BatList.at !idx2out (idx-1) in
       if BatList.for_all (fun (x, y) -> x=y) (BatList.combine tg_out out) then
         (true, expr_of_idx idx)
       else (success, func)

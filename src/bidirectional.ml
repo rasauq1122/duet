@@ -666,7 +666,7 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
 			BatMap.iter (fun nt idxes -> 
 				Bottomup.IndexSet.iter (fun idx ->
 					let expr = Bottomup.expr_of_idx idx in
-					let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
+					let expr_sig = try BatList.at idx_to_sig (idx-1) with _ -> assert false in
 					nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
 					nt_to_sigs_ref := BatMap.add nt (BatSet.add expr_sig (BatMap.find nt !nt_to_sigs_ref)) !nt_to_sigs_ref;
 					nt_to_exprs_ref := BatMap.add nt (BatSet.add (expr, max_component_size) (BatMap.find nt !nt_to_exprs_ref)) !nt_to_exprs_ref;
