@@ -9,7 +9,7 @@ type node =
 ;;
 
 (* enumerate node to int *)
-let nidx = ref 0;;
+let nidx = ref 1;;
 let idx2node = ref BatMap.empty;; (* (int, node) BatMap.t  *)
 
 (* replace operator to int *)
@@ -32,9 +32,9 @@ module IndexSet = BatSet.Make(
   struct
     type t = int
     let compare = fun x y -> (
-      let get i : const list = 
-        if i = 0 then !tmpout
-        else BatList.at !idx2out (i-1)
+      let get idx : const list = 
+        if idx = 0 then !tmpout
+        else BatList.at !idx2out (!nidx - idx - 1)
       in 
       compare (get x) (get y)
     )
@@ -92,7 +92,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
             let now_out = compute_signature spec expr in
             nidx := !nidx + 1;
             idx2node := BatMap.add idx (Leaf expr) !idx2node;
-            idx2out := !idx2out @ [now_out];
+            idx2out := now_out :: !idx2out;
             IndexSet.add idx idxes
           )
           | FuncRewrite _ -> (
@@ -153,7 +153,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                       let node = NonLeaf (BatMap.find rule !func2idx, acc) in
                       
                       (* for equivalence param valuation *)
-                      let new_spec = BatList.map (fun x -> BatList.at !idx2out (x-1)) acc in
+                      let new_spec = BatList.map (fun idx -> BatList.at !idx2out (!nidx - idx - 1)) acc in
                       
                       try (
                         let out = evaluate_expr_faster new_spec expr_for_now in 
@@ -177,7 +177,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
                         if duplicate then
                           ()
                         else
-                          let _ = idx2out := !idx2out @ [out] in
+                          let _ = idx2out := out :: !idx2out in
                           let _ = nidx := !nidx + 1 in
                           let _ = idx2node := BatMap.add idx node !idx2node in
                           let _ = now_idxes := IndexSet.add idx !now_idxes in
@@ -219,7 +219,7 @@ let rec search sz nt is_start_nt grammar nts spec sz2idxes =
   let (success, func) = IndexSet.fold (fun idx (success, func) ->
     if success then (success, func)
     else
-      let out = BatList.at !idx2out (idx-1) in
+      let out = BatList.at !idx2out (!nidx - idx - 1) in
       if BatList.for_all (fun (x, y) -> x=y) (BatList.combine tg_out out) then
         (true, expr_of_idx idx)
       else (success, func)
