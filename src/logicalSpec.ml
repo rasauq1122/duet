@@ -39,7 +39,6 @@ let rec sexp_to_cex sexp =
 
 let identifier = ref "_"
 let do_enumeration = ref false
-let synth_inv = ref false
 
 (* modify expr to use Z3 query that asks for output value of siginature *)
 let rec plug_in expr target_function_name cex_in_map (param2sig, sig_list) =
@@ -94,15 +93,18 @@ let trivial_constraint = Const (get_trivial_value Bool)
 let pre_constraint = ref trivial_constraint
 let trans_constraint = ref trivial_constraint
 let post_constraint = ref trivial_constraint
-let synth_inv = ref false
+let sub_problem = ref false
 
 let add_pre_constraint e = 
+	sub_problem := true;
 	pre_constraint := e
 
 let add_trans_constraint e =
+	sub_problem := true;
 	trans_constraint := e
 
 let add_post_constraint e =
+	sub_problem := true;	
 	post_constraint := e
 
 let forall_var_map : (string, Exprs.expr) BatMap.t ref =
@@ -278,7 +280,7 @@ let get_counter_example sol target_function_name args_map old_spec =
 			let trans_z3query = params_str ^ (Printf.sprintf "\n(assert (not %s))" (Exprs.string_of_expr resolved_trans)) in
 			let pre_opt = process_z3query pre_z3query in
 			let post_opt = process_z3query post_z3query in
-			let trans_opt = process_z3query trans_z3query in
+			let trans_opt = if !sub_problem then None else process_z3query trans_z3query in
 			(* STEP 01 : check if pre-constraint can give counter-example *)
 			if (Option.is_some pre_opt) then (
 				match pre_opt with
@@ -292,7 +294,7 @@ let get_counter_example sol target_function_name args_map old_spec =
 				| None -> assert false
 			)
 			(* STEP 02 : check if post-constraint can give counter-example *)
-			else if (Option.is_some (process_z3query post_z3query)) then (
+			else if (Option.is_some post_opt) then (
 				match post_opt with
 				| Some cex_var_map -> (
 					(* print_endline "post_opt is Some cex_var_map"; *)
@@ -305,7 +307,7 @@ let get_counter_example sol target_function_name args_map old_spec =
 				| None -> assert false
 			)
 			(* STEP 03 : check if trans-constraint can give counter-example *)
-			else if (Option.is_some (process_z3query trans_z3query)) then (
+			else if (Option.is_some trans_opt) then (
 				(* Some (BatSet.empty) *)
 				match trans_opt with
 				| Some cex_var_map -> (

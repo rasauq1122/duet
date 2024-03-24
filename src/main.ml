@@ -21,15 +21,15 @@ let main () =
 			(* PBE spec - input-output examples : ((const list) * const) list  *)
 			let spec_total = spec in
 			(* CEGIS loop *)
-			let rec cegis spec =
+			let rec cegis spec grammar' =
 				my_prerr_endline (Specification.string_of_io_spec spec);
 				my_prerr_endline (Printf.sprintf "CEGIS iter: %d" (List.length spec));
   			let sol =
 					try
 						Bidirectional.synthesis
-							(macro_instantiator, target_function_name, grammar, forall_var_map, spec)
+							(macro_instantiator, target_function_name, grammar', forall_var_map, spec)
 					with Failure _ ->
-						cegis (Compatibility.modify_spec spec)
+						cegis (Compatibility.modify_spec spec) grammar'
 				in
 				my_prerr_endline (Printf.sprintf "** Proposed candidate: %s **" (Exprs.string_of_expr sol));
 				(* spec' = spec + mismatched input-output examples *)
@@ -51,17 +51,28 @@ let main () =
 							match (LogicalSpec.get_counter_example sol target_function_name args_map spec) with
 							| None -> 
 								(* no counter-example implies the candidate is a target program *)
-								prerr_endline ("# specs : " ^ (string_of_int (List.length spec)));
-								sol
+								(* prerr_endline ("# specs : " ^ (string_of_int (List.length spec))); *)
+								if !LogicalSpec.sub_problem then
+									let _ = LogicalSpec.sub_problem := false in
+									let trivial_spec_opt = LogicalSpec.add_trivial_examples target_function_name args_map Specification.empty_spec in
+									let trivial_spec =
+									match trivial_spec_opt with
+									| None -> assert false
+									| Some trivial_spec -> trivial_spec
+									in
+									let restricted_grammar = Grammar.get_restricted_grammar grammar' sol in
+									print_endline (Grammar.string_of_grammar restricted_grammar);
+									cegis trivial_spec restricted_grammar
+								else sol
 							| Some new_spec ->
 								(* There are some counter-exmaples. *)
-								cegis new_spec
+								cegis new_spec grammar'
 						)
 					| Some cex ->
 						my_prerr_endline (Specification.string_of_io_spec [cex]); 
 						let _ = assert (not (List.mem cex spec')) in  
-						cegis (cex :: spec')
-				else cegis spec'
+						cegis (cex :: spec') grammar'
+				else cegis spec' grammar'
 			in
 			let sol = 
 			if !LogicalSpec.do_enumeration then
@@ -69,8 +80,8 @@ let main () =
 				Bottomup.synthesis (macro_instantiator, target_function_name, args_map, grammar, forall_var_map, spec) 
 			else 
 				let _ = assert ((List.length spec) > 0) in 
-				if !Options.ex_all then cegis spec_total 
-				else cegis [List.nth spec 0] 
+				if !Options.ex_all then cegis spec_total grammar
+				else cegis [List.nth spec 0] grammar
 			in
 			(* prerr_endline (Exprs.string_of_expr sol); *)
 			prerr_endline (Exprs.sexpstr_of_fun args_map target_function_name sol);

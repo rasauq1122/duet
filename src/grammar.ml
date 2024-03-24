@@ -20,6 +20,11 @@ let rec get_nts rewrite =
 	| NTRewrite _ -> [rewrite] 
 	| _ -> []
 	
+let name_of_nt nt =
+	match nt with 
+	| NTRewrite nt_id -> nt_id 
+	| _ -> failwith "name_of_nt"
+
 let op_of_rule rule = 
 	match rule with 
 	| FuncRewrite (op, _) -> op 
@@ -379,6 +384,25 @@ let rec normalize grammar =
 let preprocess macro_instantiator grammar =
 	normalize grammar		
 	
+let get_restricted_grammar grammar expr_sol = 
+	let identifier = "/R" in
+	let rec rename rewrite =
+		match rewrite with 	
+		| NTRewrite nt_id -> NTRewrite (nt_id ^ identifier) 
+		| ExprRewrite _ -> rewrite
+		| FuncRewrite (op, rewrites) -> FuncRewrite (op, List.map rename rewrites)
+	in
+	let renamed_grammar =
+		BatMap.foldi (fun rewrite rules acc ->
+			let _ = nt_type_map := BatMap.add (rename rewrite) (BatMap.find rewrite !nt_type_map) !nt_type_map in
+			BatMap.add (rename rewrite) (BatSet.map rename rules) acc
+		) grammar empty_grammar
+	in
+	let restricted_rule = 
+		FuncRewrite ("and", [ExprRewrite expr_sol; NTRewrite ((name_of_nt start_nt) ^ identifier)])
+	in
+	BatMap.add start_nt (BatSet.singleton restricted_rule) renamed_grammar
+
 (* let init_grammar =                                                                 *)
 (* 	let string_nt_id = "String" in                                                   *)
 (*   let string_nt = (NTRewrite string_nt_id) in                                      *)

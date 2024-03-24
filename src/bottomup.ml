@@ -70,8 +70,10 @@ let idxes_of_size sz grammar nts sz2idxes spec =
 
     (* mapping (NT, indexes of node that can generate from NT) *)
     let nt2idxes = BatSet.fold (fun nt nt2idxes ->
+      nt_order := [];
       nt2out := BatMap.add nt BatSet.empty !nt2out;
       let rules = BatMap.find nt grammar in
+      (* indexes of node that can generate from NT *)
       let idxes = BatSet.fold (fun rule idxes ->
         match rule with
         | ExprRewrite expr -> (
