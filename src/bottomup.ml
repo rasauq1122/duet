@@ -78,20 +78,23 @@ let idxes_of_size sz grammar nts sz2idxes spec =
         match rule with
         | ExprRewrite expr -> (
           (* mapping to expr *)
-          let idx = !nidx in
-          nidx := !nidx + 1;
-          idx2node := BatMap.add idx (Leaf expr) !idx2node;
-          idx2out := 
-            (* doing enumeration, don't use io-spec *)
-            if !LogicalSpec.do_enumeration then
-              !idx2out
-            else BatMap.add idx (compute_signature spec expr) !idx2out;
-          nt2out := 
-            (* doing enumeration, don't use io-spec *)
-            if !LogicalSpec.do_enumeration then
-              !nt2out
-            else BatMap.add nt (BatSet.add (compute_signature spec (expr_of_idx idx)) (BatMap.find nt !nt2out)) !nt2out;
-          BatSet.add idx idxes
+          if size_of_expr expr = sz then (
+            let idx = !nidx in
+            nidx := !nidx + 1;
+            idx2node := BatMap.add idx (Leaf expr) !idx2node;
+            idx2out := 
+              (* doing enumeration, don't use io-spec *)
+              if !LogicalSpec.do_enumeration then
+                !idx2out
+              else BatMap.add idx (compute_signature spec expr) !idx2out;
+            nt2out := 
+              (* doing enumeration, don't use io-spec *)
+              if !LogicalSpec.do_enumeration then
+                !nt2out
+              else BatMap.add nt (BatSet.add (compute_signature spec (expr_of_idx idx)) (BatMap.find nt !nt2out)) !nt2out;
+            BatSet.add idx idxes
+          )
+          else idxes 
         )
         | FuncRewrite _ -> (
           (* mapping to func *)
@@ -196,6 +199,36 @@ let idxes_of_size sz grammar nts sz2idxes spec =
               else idxes
             ) partitions idxes in
             idxes
+        )
+        | ExprRewrite expr -> (
+          if size_of_expr expr = sz then (
+            let idx = !nidx in
+            let node = Leaf expr in
+            let out = 
+              if !LogicalSpec.do_enumeration then []
+              else compute_signature spec expr 
+            in
+            if not (!LogicalSpec.do_enumeration) && BatSet.mem out (BatMap.find nt !nt2out) then idxes
+            else
+              let _ = nidx := !nidx + 1 in
+              let _ = idx2node := BatMap.add idx node !idx2node in
+              let _ = 
+                idx2out := 
+                  (* doing enumeration, don't use io-spec *)
+                  if !LogicalSpec.do_enumeration then
+                    !idx2out
+                  else BatMap.add idx out !idx2out
+              in
+              let _ = 
+                nt2out := 
+                  (* doing enumeration, don't use io-spec *)
+                  if !LogicalSpec.do_enumeration then
+                    !nt2out
+                  else BatMap.add nt (BatSet.add out (BatMap.find nt !nt2out)) !nt2out
+              in
+              BatSet.add idx idxes
+          )
+          else idxes
         )
         | _ -> idxes (* not operator : skip *)
       ) rules BatSet.empty in

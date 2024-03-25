@@ -107,6 +107,12 @@ let add_post_constraint e =
 	sub_problem := true;	
 	post_constraint := e
 
+let is_sub_problem () = !sub_problem
+
+let new_problem () =
+	sub_problem := false;
+	Compatibility.new_problem ()
+
 let forall_var_map : (string, Exprs.expr) BatMap.t ref =
 	(* name -> Var *) 
 	ref BatMap.empty

@@ -398,10 +398,15 @@ let get_restricted_grammar grammar expr_sol =
 			BatMap.add (rename rewrite) (BatSet.map rename rules) acc
 		) grammar empty_grammar
 	in
-	let restricted_rule = 
-		FuncRewrite ("and", [ExprRewrite expr_sol; NTRewrite ((name_of_nt start_nt) ^ identifier)])
+	let expr_nt = NTRewrite "StartExpr" in
+	let _ = nt_type_map := BatMap.add expr_nt (BatMap.find start_nt !nt_type_map) !nt_type_map in
+	let new_grammar = 
+		BatMap.add expr_nt (BatSet.singleton (ExprRewrite expr_sol)) renamed_grammar
 	in
-	BatMap.add start_nt (BatSet.singleton restricted_rule) renamed_grammar
+	let restricted_rule = 
+		BatSet.singleton (FuncRewrite ("and", [expr_nt; NTRewrite ((name_of_nt start_nt) ^ identifier)]))
+	in
+	BatMap.add start_nt restricted_rule new_grammar
 
 (* let init_grammar =                                                                 *)
 (* 	let string_nt_id = "String" in                                                   *)

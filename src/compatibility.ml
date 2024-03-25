@@ -28,6 +28,10 @@ let weak_stack : ((const list) list * int) list ref = ref []
 let b_list = [[true; true]; [false; true]; [false; false]]
 let strong_idx = -1 (* for strong io-specs in the all_map *)
 
+let new_problem () = 
+  all_map := BatMap.empty;
+  weak_stack := []
+
 let string_of_stack s = 
   string_of_list (fun (aa, i) -> 
     (string_of_list (string_of_list string_of_const) aa) ^ " " ^ (string_of_int i)

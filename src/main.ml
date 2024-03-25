@@ -52,8 +52,8 @@ let main () =
 							| None -> 
 								(* no counter-example implies the candidate is a target program *)
 								(* prerr_endline ("# specs : " ^ (string_of_int (List.length spec))); *)
-								if !LogicalSpec.sub_problem then
-									let _ = LogicalSpec.sub_problem := false in
+								if LogicalSpec.is_sub_problem () then
+									let _ = LogicalSpec.new_problem () in
 									let trivial_spec_opt = LogicalSpec.add_trivial_examples target_function_name args_map Specification.empty_spec in
 									let trivial_spec =
 									match trivial_spec_opt with
