@@ -406,6 +406,9 @@ let get_restricted_grammar grammar expr_sol =
 	let restricted_rule = 
 		BatSet.singleton (FuncRewrite ("and", [expr_nt; NTRewrite ((name_of_nt start_nt) ^ identifier)]))
 	in
+	(* let restricted_rule = 
+		BatSet.add (FuncRewrite ("or", [expr_nt; NTRewrite ((name_of_nt start_nt) ^ identifier)])) restricted_rule
+	in *)
 	BatMap.add start_nt restricted_rule new_grammar
 
 (* let init_grammar =                                                                 *)

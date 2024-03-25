@@ -31,6 +31,7 @@ let main () =
 					with Failure _ ->
 						cegis (Compatibility.modify_spec spec) grammar'
 				in
+				(* print_endline (Printf.sprintf "** Proposed candidate: %s **" (Exprs.string_of_expr sol)); *)
 				my_prerr_endline (Printf.sprintf "** Proposed candidate: %s **" (Exprs.string_of_expr sol));
 				(* spec' = spec + mismatched input-output examples *)
 				let spec' = 
@@ -61,7 +62,6 @@ let main () =
 									| Some trivial_spec -> trivial_spec
 									in
 									let restricted_grammar = Grammar.get_restricted_grammar grammar' sol in
-									print_endline (Grammar.string_of_grammar restricted_grammar);
 									cegis trivial_spec restricted_grammar
 								else sol
 							| Some new_spec ->
