@@ -258,7 +258,7 @@ let process_synth_invs synth_inv_data =
 					)	args_map [
 						Sexp.Atom "true";
 						Sexp.Atom "false";
-						Sexp.List [Sexp.Atom "ite"; Sexp.Atom "Start"; Sexp.Atom "Start"; Sexp.Atom "Start"];
+						(* Sexp.List [Sexp.Atom "ite"; Sexp.Atom "Start"; Sexp.Atom "Start"; Sexp.Atom "Start"]; *)
 						Sexp.List [Sexp.Atom "not"; Sexp.Atom "Start"];
 						Sexp.List [Sexp.Atom "and"; Sexp.Atom "Start"; Sexp.Atom "Start"];
 						Sexp.List [Sexp.Atom "or"; Sexp.Atom "Start"; Sexp.Atom "Start"];
@@ -291,12 +291,12 @@ let process_synth_invs synth_inv_data =
 						Sexp.Atom "7";
 						Sexp.Atom "8";
 						Sexp.Atom "9";
-						Sexp.List [Sexp.Atom "ite"; Sexp.Atom "Start"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
+						(* Sexp.List [Sexp.Atom "ite"; Sexp.Atom "Start"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"]; *)
 						Sexp.List [Sexp.Atom "+"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
 						Sexp.List [Sexp.Atom "-"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
 						Sexp.List [Sexp.Atom "*"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
-						Sexp.List [Sexp.Atom "/"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
-						Sexp.List [Sexp.Atom "mod"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"];
+						(* Sexp.List [Sexp.Atom "/"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"]; *)
+						(* Sexp.List [Sexp.Atom "mod"; Sexp.Atom "StartInt"; Sexp.Atom "StartInt"]; *)
 					])
 				]
 			] 
@@ -588,6 +588,8 @@ let parse file =
 			| None -> spec
 			| Some new_spec -> new_spec
 		in
+		let _ = LogicalSpec.turn_on_sub_problem () in
+		(* print_endline (Specification.string_of_io_spec spec); *)
 		(macro_instantiator, target_function_name, args_map, grammar, !Specification.forall_var_map, spec)
 	end
 	else
@@ -609,6 +611,5 @@ let parse file =
 			| Some new_spec -> new_spec
 		in
 		my_prerr_endline (Specification.string_of_io_spec spec);
-		(* print_endline (Specification.string_of_io_spec spec); *)
 		(macro_instantiator, target_function_name, args_map, grammar, !Specification.forall_var_map, spec)  
 	end
