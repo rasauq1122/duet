@@ -96,16 +96,16 @@ let post_constraint = ref trivial_constraint
 let sub_problem = ref false
 
 let add_pre_constraint e = 
-	sub_problem := true;
 	pre_constraint := e
 
 let add_trans_constraint e =
-	sub_problem := true;
 	trans_constraint := e
 
 let add_post_constraint e =
-	sub_problem := true;	
 	post_constraint := e
+
+let turn_on_sub_problem () = 
+	sub_problem := true
 
 let is_sub_problem () = !sub_problem
 
@@ -285,10 +285,11 @@ let get_counter_example sol target_function_name args_map old_spec =
 			let post_z3query = params_str_not_primed ^ (Printf.sprintf "\n(assert (not %s))" (Exprs.string_of_expr resolved_post)) in
 			let trans_z3query = params_str ^ (Printf.sprintf "\n(assert (not %s))" (Exprs.string_of_expr resolved_trans)) in
 			let pre_opt = process_z3query pre_z3query in
-			let post_opt = process_z3query post_z3query in
-			let trans_opt = if !sub_problem then None else process_z3query trans_z3query in
+			let post_opt = if !sub_problem then None else process_z3query post_z3query in
+			let trans_opt = process_z3query trans_z3query in
 			(* STEP 01 : check if pre-constraint can give counter-example *)
 			if (Option.is_some pre_opt) then (
+				(* print_endline "counter-example at pre"; *)
 				match pre_opt with
 				| Some cex_var_map -> (
 					(* print_endline "pre_opt is Some cex_var_map"; *)
@@ -301,6 +302,7 @@ let get_counter_example sol target_function_name args_map old_spec =
 			)
 			(* STEP 02 : check if post-constraint can give counter-example *)
 			else if (Option.is_some post_opt) then (
+				(* print_endline "counter-example at post"; *)
 				match post_opt with
 				| Some cex_var_map -> (
 					(* print_endline "post_opt is Some cex_var_map"; *)
@@ -317,8 +319,11 @@ let get_counter_example sol target_function_name args_map old_spec =
 				(* Some (BatSet.empty) *)
 				match trans_opt with
 				| Some cex_var_map -> (
+					(* print_endline "counter-example at trans"; *)
 					(* print_endline "trans_opt is Some cex_var_map"; *)
 					let cex_in = make_cex_in target_function_name cex_var_map !trans_constraint in
+					(* print_endline (string_of_list (string_of_list string_of_const) cex_in);
+					print_endline (string_of_expr sol); *)
 					assert ((BatList.length cex_in) = 2);
 					(* always give two counter-examples. x = x' doesn't happen. *)
 					let (l, l') =
