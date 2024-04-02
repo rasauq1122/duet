@@ -62,6 +62,7 @@ let main () =
 									| Some trivial_spec -> trivial_spec
 									in
 									let restricted_grammar = Grammar.get_restricted_grammar grammar' sol in
+									(* print_endline (Printf.sprintf "** Target program of the sub-problem: %s **" (Exprs.string_of_expr sol)); *)
 									cegis trivial_spec restricted_grammar
 								else sol
 							| Some new_spec ->
