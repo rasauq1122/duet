@@ -411,6 +411,13 @@ let get_restricted_grammar grammar expr_sol =
 	in
 	BatMap.add start_nt restricted_rule new_grammar
 
+let add_const_rule grammar nttype consts = 
+	BatMap.mapi (fun nt rules ->
+		if (type_of_nt nt) = nttype then
+			BatSet.union rules (BatSet.map (fun x -> ExprRewrite x) consts)
+		else rules
+	) grammar
+
 (* let init_grammar =                                                                 *)
 (* 	let string_nt_id = "String" in                                                   *)
 (*   let string_nt = (NTRewrite string_nt_id) in                                      *)

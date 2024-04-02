@@ -453,3 +453,21 @@ let add_trivial_examples target_function_name args_map old_spec =
 			in
 			Some ([(cex_in, cex_out)])
 		| _ -> exp_opt
+
+(* ONLY FOR SYNTH-INV *)
+let get_const_from_inv_constraints () = 
+	let rec aux expr =
+		match expr with
+		| Const c -> [c]
+		| Var _ -> []
+		| Param _ -> []
+		| Function (_, exprs, _) -> 
+			BatList.fold_left (fun acc e -> acc @ (aux e)) [] exprs
+	in
+	let inv_constraints = [!pre_constraint; !post_constraint; !trans_constraint] in
+	let consts = BatList.fold_left (fun acc e -> acc @ (aux e)) [] inv_constraints in
+	BatList.fold_left (fun acc c ->
+		match c with
+		| CInt _ -> BatSet.add (Const c) acc
+		| _ -> acc
+	) BatSet.empty consts

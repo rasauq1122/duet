@@ -588,6 +588,8 @@ let parse file =
 			| None -> spec
 			| Some new_spec -> new_spec
 		in
+		let consts_in_constraints = LogicalSpec.get_const_from_inv_constraints () in
+		let grammar = Grammar.add_const_rule grammar Int consts_in_constraints in
 		let _ = LogicalSpec.turn_on_sub_problem () in
 		(* print_endline (Specification.string_of_io_spec spec); *)
 		(macro_instantiator, target_function_name, args_map, grammar, !Specification.forall_var_map, spec)
