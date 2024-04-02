@@ -51,6 +51,28 @@ let rec p n k =
     in aux 1
 ;;
 
+let get_map_if_exists map x = 
+  try BatMap.find x map with _ -> BatMap.empty
+
+let get_set_if_exists map x = 
+  try BatMap.find x map with _ -> BatSet.empty
+
+let add_leaf expr nt spec idxes =
+  let idx = !nidx in
+  nidx := !nidx + 1;
+  idx2node := BatMap.add idx (Leaf expr) !idx2node;
+  idx2out := 
+    (* doing enumeration, don't use io-spec *)
+    if !LogicalSpec.do_enumeration then
+      !idx2out
+    else BatMap.add idx (compute_signature spec expr) !idx2out;
+  nt2out := 
+    (* doing enumeration, don't use io-spec *)
+    if !LogicalSpec.do_enumeration then
+      !nt2out
+    else BatMap.add nt (BatSet.add (compute_signature spec (expr_of_idx idx)) (BatMap.find nt !nt2out)) !nt2out;
+  BatSet.add idx idxes
+
 (* returns (int, (NTRewrite, IndexSet) ) BatMap.t *)
 (* uses size-of-expr for key, 
    map (
@@ -78,22 +100,7 @@ let idxes_of_size sz grammar nts sz2idxes spec =
         match rule with
         | ExprRewrite expr -> (
           (* mapping to expr *)
-          if size_of_expr expr = sz then (
-            let idx = !nidx in
-            nidx := !nidx + 1;
-            idx2node := BatMap.add idx (Leaf expr) !idx2node;
-            idx2out := 
-              (* doing enumeration, don't use io-spec *)
-              if !LogicalSpec.do_enumeration then
-                !idx2out
-              else BatMap.add idx (compute_signature spec expr) !idx2out;
-            nt2out := 
-              (* doing enumeration, don't use io-spec *)
-              if !LogicalSpec.do_enumeration then
-                !nt2out
-              else BatMap.add nt (BatSet.add (compute_signature spec (expr_of_idx idx)) (BatMap.find nt !nt2out)) !nt2out;
-            BatSet.add idx idxes
-          )
+          if size_of_expr expr = sz then add_leaf expr nt spec idxes
           else idxes 
         )
         | FuncRewrite _ -> (
@@ -109,7 +116,23 @@ let idxes_of_size sz grammar nts sz2idxes spec =
       BatMap.add nt idxes nt2idxes
     ) nts BatMap.empty in
     (* print_endline "done!"; *)
-    BatMap.add sz nt2idxes sz2idxes
+    let one_to_nt_idxes = BatMap.add sz nt2idxes sz2idxes in
+    BatMap.foldi (fun nt rules sz_nt_idxes ->
+      BatSet.fold (fun rule sz_nt_idxes -> 
+        match rule with
+        | ExprRewrite expr -> (
+          if size_of_expr expr = sz then sz_nt_idxes
+          else
+            let expr_sz = size_of_expr expr in
+            let tmp_nt2idxes = get_map_if_exists sz_nt_idxes expr_sz in
+            let tmp_idxes = get_set_if_exists tmp_nt2idxes nt in
+            let idxes = add_leaf expr nt spec tmp_idxes in
+            let nt2idxes = BatMap.add nt idxes tmp_nt2idxes in
+            BatMap.add expr_sz nt2idxes sz_nt_idxes
+        )
+        | _ -> sz_nt_idxes
+      ) rules sz_nt_idxes
+    ) grammar one_to_nt_idxes
   else (* sz > 1 *)
     let nt2idxes = BatSet.fold (fun nt nt2idxes -> 
       let rules = BatMap.find nt grammar in
@@ -199,36 +222,6 @@ let idxes_of_size sz grammar nts sz2idxes spec =
               else idxes
             ) partitions idxes in
             idxes
-        )
-        | ExprRewrite expr -> (
-          if size_of_expr expr = sz then (
-            let idx = !nidx in
-            let node = Leaf expr in
-            let out = 
-              if !LogicalSpec.do_enumeration then []
-              else compute_signature spec expr 
-            in
-            if not (!LogicalSpec.do_enumeration) && BatSet.mem out (BatMap.find nt !nt2out) then idxes
-            else
-              let _ = nidx := !nidx + 1 in
-              let _ = idx2node := BatMap.add idx node !idx2node in
-              let _ = 
-                idx2out := 
-                  (* doing enumeration, don't use io-spec *)
-                  if !LogicalSpec.do_enumeration then
-                    !idx2out
-                  else BatMap.add idx out !idx2out
-              in
-              let _ = 
-                nt2out := 
-                  (* doing enumeration, don't use io-spec *)
-                  if !LogicalSpec.do_enumeration then
-                    !nt2out
-                  else BatMap.add nt (BatSet.add out (BatMap.find nt !nt2out)) !nt2out
-              in
-              BatSet.add idx idxes
-          )
-          else idxes
         )
         | _ -> idxes (* not operator : skip *)
       ) rules BatSet.empty in
@@ -397,5 +390,6 @@ let get_sigs_of_size _ (* desired_sig *) spec nts size_to_nt_to_idxes
   print_endline (string_of_int curr_size);
   print_endline (string_of_map string_of_rewrite (string_of_set string_of_expr) nt_to_exprs); *)
   (* print_endline (string_of_map string_of_rewrite (string_of_set (string_of_list string_of_const)) !nt2out); *)
+  (* if curr_size = 1 then print_endline (string_of_map string_of_int (string_of_map string_of_rewrite (string_of_set (fun x -> string_of_expr (expr_of_idx x)))) size_to_nt_to_idxes); *)
   (!nt2out, size_to_nt_to_idxes, !idx2out)
 ;;
