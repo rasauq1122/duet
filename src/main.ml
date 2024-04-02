@@ -52,8 +52,17 @@ let main () =
 							match (LogicalSpec.get_counter_example sol target_function_name args_map spec) with
 							| None -> 
 								(* no counter-example implies the candidate is a target program *)
-								(* prerr_endline ("# specs : " ^ (string_of_int (List.length spec))); *)
+								prerr_endline ("# specs : " ^ (string_of_int (List.length spec)));
 								if LogicalSpec.is_sub_problem () then
+									let _ = prerr_endline (Exprs.sexpstr_of_fun args_map target_function_name sol) in
+									let _ = prerr_endline ("****************** statistics *******************") in 
+									let _ = prerr_endline ("size : " ^ (string_of_int (Exprs.size_of_expr sol))) in 
+									let _ = prerr_endline ("time : " ^ (Printf.sprintf "%.2f sec" (Sys.time() -. start))) in
+									let _ = prerr_endline ("max_component_size : " ^ (string_of_int !Bidirectional.curr_comp_size)) in 
+									let _ = prerr_endline ("# components : " ^ (string_of_int !Bidirectional.num_components)) in 
+									let _ = prerr_endline ("time for composition : " ^ (Printf.sprintf "%.2f sec" !Bidirectional.td_time)) in
+									let _ = prerr_endline ("time for component generation : " ^ (Printf.sprintf "%.2f sec" !Bidirectional.bu_time)) in 
+									let _ = prerr_endline ("**************************************************") in
 									let _ = LogicalSpec.new_problem () in
 									let trivial_spec_opt = LogicalSpec.add_trivial_examples target_function_name args_map Specification.empty_spec in
 									let trivial_spec =
