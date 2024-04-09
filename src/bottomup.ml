@@ -80,6 +80,20 @@ let add_leaf expr nt spec idxes =
     Set of indexes-of-node for value
   ) for value 
 *)
+let rec size_of_rule rule =
+  match rule with
+  | FuncRewrite (_, children) ->
+    BatList.fold_left (fun acc x -> acc + size_of_rule x) 1 children
+  | NTRewrite _ -> 1
+  | ExprRewrite expr -> size_of_expr expr
+
+let rec find_hole rule = 
+  match rule with
+  | FuncRewrite (_, children) -> 
+    BatList.fold_right (fun x acc -> (find_hole x) @ acc) [] children
+  | NTRewrite _ -> [rule]
+  | ExprRewrite _ -> []
+
 let idxes_of_size sz grammar nts sz2idxes spec = 
   if sz = 1 then
     let _ = nidx := 0 in
@@ -139,24 +153,32 @@ let idxes_of_size sz grammar nts sz2idxes spec =
       let idxes = BatSet.fold (fun rule idxes ->
         match rule with
         | FuncRewrite (op, children) -> (
-          if (BatList.length children) >= sz then idxes
+          if (size_of_rule rule) > sz then idxes
           else 
             (* make equivalence expression *)
             let functype = BatMap.find nt !Grammar.nt_type_map in
-            let expr_for_now = 
-              Function (op, (BatList.fold_right (fun rewrite children ->
-                  children @ [Param (BatList.length children, BatMap.find rewrite !Grammar.nt_type_map)]
-                ) children []),
-                functype
-              )
+            let holes = ref [] in
+            let rec rule_to_expr rule =
+              match rule with
+              | FuncRewrite (op, children) ->
+                Function (op, (BatList.map rule_to_expr children), ret_type_of_op rule)
+              | NTRewrite _ ->
+                let nt_expr = Param (BatList.length !holes, BatMap.find rule !Grammar.nt_type_map) in
+                let _ = holes := !holes @ [rule] in
+                nt_expr
+              | ExprRewrite expr -> expr
+            in
+            let holes = find_hole rule in
+            (* print_endline (string_of_list string_of_rewrite holes); *)
+            let expr_for_now = rule_to_expr rule
             in
             (* print_endline (string_of_expr expr_for_now); *)
             (* get partition *)
-            let partitions = p (sz-1) (BatList.length children) in
+            let partitions = p (sz-1) (BatList.length holes) in
             (* get indexes of node that can generate from nt *)
             let idxes = BatList.fold_right (fun partition idxes ->
               (* making pair of (size, NT) list *)
-              let sz_x_nt = BatList.combine partition children in
+              let sz_x_nt = BatList.combine partition holes in
               (* check if all (size, NT) has non-empty set *)
               let is_all_not_empty x =
                 BatList.for_all (fun (sz, nt) -> 

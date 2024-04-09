@@ -398,16 +398,28 @@ let get_restricted_grammar grammar expr_sol =
 			BatMap.add (rename rewrite) (BatSet.map rename rules) acc
 		) grammar empty_grammar
 	in
+	(* let rw_true = ExprRewrite (Const (CBool (Concrete true))) in
+	let rw_false = ExprRewrite (Const (CBool (Concrete false))) in *)
+	let rw_sol = ExprRewrite expr_sol in
 	let expr_nt = NTRewrite "StartExpr" in
 	let _ = nt_type_map := BatMap.add expr_nt (BatMap.find start_nt !nt_type_map) !nt_type_map in
 	let new_grammar = 
 		BatMap.add expr_nt (BatSet.singleton (ExprRewrite expr_sol)) renamed_grammar
 	in
+	(* non-terminal Start : StartExpr | (or StartExpr Start/R) | (and StartExpr Start/R) *)
+	let restricted_rule = BatSet.singleton (rw_sol) in 
+	let start_r = NTRewrite ((name_of_nt start_nt) ^ identifier) in
 	let restricted_rule = 
-		BatSet.singleton (FuncRewrite ("and", [expr_nt; NTRewrite ((name_of_nt start_nt) ^ identifier)]))
+		(* equiv. (and StartExpr Start/R) *)
+		(* BatSet.add (FuncRewrite ("ite", [expr_nt; start_r; rw_false])) restricted_rule *)
+		(* BatSet.add (FuncRewrite ("ite", [rw_sol; start_r; rw_false])) restricted_rule *)
+		BatSet.add (FuncRewrite ("and", [expr_ntl; start_r])) restricted_rule
 	in
 	let restricted_rule = 
-		BatSet.add (FuncRewrite ("or", [expr_nt; NTRewrite ((name_of_nt start_nt) ^ identifier)])) restricted_rule
+		(* equiv. (or StartExpr Start/R) *)
+		(* BatSet.add (FuncRewrite ("ite", [expr_nt; rw_true ; start_r])) restricted_rule *)
+		(* BatSet.add (FuncRewrite ("ite", [rw_sol; rw_true ; start_r])) restricted_rule *)
+		BatSet.add (FuncRewrite ("or", [expr_nt; start_r])) restricted_rule
 	in
 	BatMap.add start_nt restricted_rule new_grammar
 

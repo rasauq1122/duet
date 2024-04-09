@@ -662,15 +662,28 @@ let synthesis (macro_instantiator, target_function_name, grammar, forall_var_map
 		(* let nt_to_sigs_ref = ref nt_to_sigs in *)
 		(* convert size_to_nt_to_idxes to nt_to_exprs & nt_sig_to_expr *)
 		let nt_to_exprs = 
-			BatMap.mapi (fun nt idxes -> 
-				let exprs = BatSet.map (fun idx ->
-					let expr = Bottomup.expr_of_idx idx in
-					let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
-					nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
-					(expr, max_component_size) 
-				) idxes in
-				BatSet.union exprs (try BatMap.find nt nt_to_exprs with _ -> assert false)
-			) (BatMap.find max_component_size size_to_nt_to_idxes)
+			if prev_size_nt_sig_to_expr = 0 then
+				BatMap.foldi (fun sz nt_to_idxes nt_to_exprs ->
+					BatMap.union (BatMap.mapi (fun nt idxes -> 
+						let exprs = BatSet.map (fun idx ->
+							let expr = Bottomup.expr_of_idx idx in
+							let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
+							nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
+							(expr, sz) 
+						) idxes in
+						BatSet.union exprs (try BatMap.find nt nt_to_exprs with _ -> BatSet.empty)
+					) nt_to_idxes) nt_to_exprs
+				) size_to_nt_to_idxes BatMap.empty
+			else 
+				BatMap.mapi (fun nt idxes -> 
+					let exprs = BatSet.map (fun idx ->
+						let expr = Bottomup.expr_of_idx idx in
+						let expr_sig = try BatMap.find idx idx_to_sig with _ -> assert false in
+						nt_sig_to_expr_ref := BatMap.add (nt, expr_sig) expr !nt_sig_to_expr_ref;
+						(expr, max_component_size) 
+					) idxes in
+					BatSet.union exprs (try BatMap.find nt nt_to_exprs with _ -> assert false)
+				) (BatMap.find max_component_size size_to_nt_to_idxes)
 		in
 		let nt_sig_to_expr = !nt_sig_to_expr_ref in
 		(* let nt_to_sigs = !nt_to_sigs_ref in *)
